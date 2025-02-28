@@ -1,3 +1,7 @@
+# Trabalho final AOC I - 2024/2 
+# RPG .....
+# Gabriela Rickes e Vitória Santa Lucia
+
 .data
     # Mensagens de interface
     class_menu: .asciiz "\nEscolha sua classe:\n1. Guerreiro (Vida: 120, Dano: 25)\n2. Mago (Vida: 80, Dano: 35)\n3. Arqueiro (Vida: 100, Dano: 30)\nEscolha: "
