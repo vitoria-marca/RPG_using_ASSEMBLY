@@ -1,0 +1,201 @@
+# Trabalho final AOC I - 2024/2 
+# RPG .....
+# Gabriela Rickes e Vitória Santa Lucia
+
+.data
+    # Mensagens de interface
+    classe_menu: .asciiz "\nEscolha sua classe:\n1. Guerreiro (Vida: 120, Dano: 25)\n2. Mago (Vida: 80, Dano: 35)\n3. Arqueiro (Vida: 100, Dano: 30)\nEscolha: "
+    menu: .asciiz "\nEscolha sua ação:\n1. Atacar\n2. Usar Poção\n3. Fugir\nEscolha: "
+    msg_atacou: .asciiz "Você atacou o inimigo!\n"
+    msg_pocao: .asciiz "Você usou uma poção e restaurou vida!\n"
+    msg_fuga: .asciiz "Você fugiu da batalha!\n"
+    msg_atacado: .asciiz "O inimigo atacou você!\n"
+    msg_vitoria: .asciiz "Você derrotou o inimigo!\n"
+    msg_derrotado: .asciiz "Você foi derrotado!\n"
+    msg_invalido: .asciiz "Opção inválida!\n"
+    nova_linha: .asciiz "\n"
+    msg_HP_restante: .asciiz "Vida restante do inimigo:\n"
+    msg_HP_atual: .asciiz "Vida atual:\n"
+
+    # Variáveis do jogador
+    hp_jogador: .word 100          # Vida do jogador
+    dano_jogador: .word 20       # Dano do jogador
+    pocoes_disponiveis: .word 3       # Poções disponíveis
+
+    # Variáveis do inimigo
+    hp_inimigo: .word 80            # Vida do inimigo
+    dano_inimigo: .word 15        # Dano do inimigo
+
+.text
+    .globl main
+
+main:
+    # Escolha da classe do personagem
+    li $v0, 4
+    la $a0, classe_menu
+    syscall
+
+    li $v0, 5  # Ler entrada do usuário
+    syscall
+    move $t0, $v0  # Armazena a escolha da classe
+
+    beq $t0, 1, guerreiro   # Guerreiro
+    beq $t0, 2, mago      # Mago
+    beq $t0, 3, arqueiro    # Arqueiro
+    j main  # Caso inválido, pede novamente
+
+guerreiro:
+    li $t1, 120  # Vida
+    li $t2, 25   # Dano
+    j set_class
+
+mago:
+    li $t1, 80   # Vida
+    li $t2, 35   # Dano
+    j set_class
+
+arqueiro:
+    li $t1, 100  # Vida
+    li $t2, 30   # Dano
+    j set_class
+
+set_class:
+    sw $t1, hp_jogador       # Define a vida do jogador
+    sw $t2, dano_jogador   # Define o dano do jogador
+    j loop_batalha
+
+loop_batalha:
+    # Exibe o menu para o jogador
+    li $v0, 4
+    la $a0, menu
+    syscall
+
+    # Lê a escolha do jogador
+    li $v0, 5
+    syscall
+    move $t0, $v0  # Armazena a opção escolhida
+
+    # Verifica a ação escolhida
+    beq $t0, 1, jogador_ataca  # Atacar
+    beq $t0, 2, usa_pocao     # Usar poção
+    beq $t0, 3, fuga           # Fugir
+    j opcao_invalida          # Caso inválido
+
+jogador_ataca:
+    # O jogador ataca o inimigo
+    lw $t1, hp_inimigo           # Carrega a vida do inimigo
+    lw $t2, dano_jogador      # Carrega o dano do jogador
+    sub $t1, $t1, $t2          # Reduz a vida do inimigo
+    sw $t1, hp_inimigo           # Atualiza a vida do inimigo
+
+    # Exibe mensagem de ataque
+    li $v0, 4
+    la $a0, msg_atacou
+    syscall
+    
+    #Exibe a vida do inimigo na tela
+    li $v0, 4
+    la $a0, msg_HP_restante
+    syscall
+    li $v0, 1 
+    lw $a0, hp_inimigo   
+    syscall
+    li $v0, 4
+    la $a0, nova_linha
+    syscall
+
+    # Verifica se o inimigo foi derrotado
+    blez $t1, vitoria
+    jal inimigo_ataca
+    j loop_batalha
+
+usa_pocao:
+    # O jogador usa uma poção
+    lw $t3, pocoes_disponiveis     # Carrega o número de poções
+    blez $t3, loop_batalha      # Se não houver poções, volta ao menu
+
+    addi $t3, $t3, -1          # Reduz o número de poções
+    sw $t3, pocoes_disponiveis
+    lw $t4, hp_jogador          # Carrega a vida do jogador
+    addi $t4, $t4, 20          # Restaura 20 pontos de vida
+    sw $t4, hp_jogador
+
+    # Exibe mensagem de uso da poção
+    li $v0, 4
+    la $a0, msg_pocao
+    syscall
+    
+    #Exibe a vida do jogador na tela
+    li $v0, 4
+    la $a0, msg_HP_atual
+    syscall
+    li $v0, 1 
+    lw $a0, hp_jogador   
+    syscall
+    li $v0, 4
+    la $a0, nova_linha
+    syscall
+
+    # Turno do inimigo
+    jal inimigo_ataca
+    j loop_batalha
+
+fuga:
+    # O jogador foge da batalha
+    li $v0, 4
+    la $a0, msg_fuga
+    syscall
+    j game_over
+
+inimigo_ataca:
+    # O inimigo ataca o jogador
+    lw $t5, hp_jogador          # Carrega a vida do jogador
+    lw $t6, dano_inimigo       # Carrega o dano do inimigo
+    sub $t5, $t5, $t6          # Reduz a vida do jogador
+    sw $t5, hp_jogador
+
+    # Exibe mensagem de ataque do inimigo
+    li $v0, 4
+    la $a0, msg_atacado
+    syscall
+    
+    #Exibe a vida do jogador na tela
+    li $v0, 4
+    la $a0, msg_HP_atual
+    syscall
+    li $v0, 1 
+    lw $a0, hp_jogador   
+    syscall
+    li $v0, 4
+    la $a0, nova_linha
+    syscall
+
+    # Verifica se o jogador foi derrotado
+    blez $t5, derrota
+    jr $ra
+
+vitoria:
+    # Mensagem de vitória
+    li $v0, 4
+    la $a0, msg_vitoria
+    syscall
+    j game_over
+
+derrota:
+    # Mensagem de derrota
+    li $v0, 4
+    la $a0, msg_derrotado
+    syscall
+    j game_over
+
+opcao_invalida:
+    # Mensagem de opção inválida
+    li $v0, 4
+    la $a0, msg_invalido
+    syscall
+    j loop_batalha
+
+game_over:
+    # Finaliza o programa
+    li $v0, 10
+    syscall
