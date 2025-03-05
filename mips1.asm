@@ -4,198 +4,278 @@
 
 .data
     # Mensagens de interface
-    class_menu: .asciiz "\nEscolha sua classe:\n1. Guerreiro (Vida: 120, Dano: 25)\n2. Mago (Vida: 80, Dano: 35)\n3. Arqueiro (Vida: 100, Dano: 30)\nEscolha: "
-    menu: .asciiz "\nEscolha sua ação:\n1. Atacar\n2. Usar Poção\n3. Fugir\nEscolha: "
-    msgAttack: .asciiz "Você atacou o inimigo!\n"
-    msgPotion: .asciiz "Você usou uma poção e restaurou vida!\n"
-    msgFlee: .asciiz "Você fugiu da batalha!\n"
-    msgEnemyAttack: .asciiz "O inimigo atacou você!\n"
-    msgWin: .asciiz "Você derrotou o inimigo!\n"
-    msgLose: .asciiz "Você foi derrotado!\n"
-    msgInvalid: .asciiz "Opção inválida!\n"
-    newline: .asciiz "\n"
-    msgEnemyHP: .asciiz "Vida restante do inimigo:\n"
-    msgPlayerHP: .asciiz "Vida atual:\n"
+    classe_menu: .asciiz "\nEscolha sua classe:\n1. Guerreiro (Vida: 120, Dano: 25)\n2. Mago (Vida: 80, Dano: 35)\n3. Arqueiro (Vida: 100, Dano: 30)\nEscolha: "
+    menu: .asciiz "\nEscolha sua ação:\n1. Atacar\n2. Usar Poção\n3. Esquivar\n4. Fugir\nEscolha: "
+    dificuldade_menu: .asciiz "\nEscolha a dificuldade:\n1. Fácil\n2. Normal\n3. Difícil\nEscolha: "
+    msg_atacou: .asciiz "Você atacou o inimigo!\n"
+    msg_pocao: .asciiz "Você usou uma poção e restaurou vida!\n"
+    msg_fuga: .asciiz "Você fugiu da batalha!\n"
+    msg_atacado: .asciiz "O inimigo atacou você!\n"
+    msg_vitoria: .asciiz "Você derrotou o inimigo!\n"
+    msg_derrotado: .asciiz "Você foi derrotado!\n"
+    msg_invalido: .asciiz "Opção inválida!\n"
+    nova_linha: .asciiz "\n"
+    msg_HP_restante: .asciiz "Vida restante do inimigo:\n"
+    msg_HP_atual: .asciiz "Vida atual:\n"
+    msg_esquiva: .asciiz "Você não pode mais utilizar esquivas."
 
     # Variáveis do jogador
-    player_hp: .word 100          # Vida do jogador
-    player_damage: .word 20       # Dano do jogador
-    player_potions: .word 3       # Poções disponíveis
+    hp_jogador: .word 100	# Vida do jogador
+    dano_jogador: .word 20	# Dano do jogador
+    pocoes_disponiveis: .word 3	# Poções disponíveis
+    esquiva_disponivel: .word 1	# Esquivas disponíveis (base)
 
     # Variáveis do inimigo
-    enemy_hp: .word 80            # Vida do inimigo
-    enemy_attack: .word 15        # Dano do inimigo
+    hp_inimigo: .word 80            # Vida do inimigo
+    dano_inimigo: .word 15        # Dano do inimigo
 
 .text
     .globl main
 
 main:
+   
     # Escolha da classe do personagem
     li $v0, 4
-    la $a0, class_menu
+    la $a0, classe_menu
     syscall
 
     li $v0, 5  # Ler entrada do usuário
     syscall
-    move $t0, $v0  # Armazena a escolha da classe
+    move $t1, $v0  # Armazena a escolha da classe
 
-    beq $t0, 1, set_warrior   # Guerreiro
-    beq $t0, 2, set_mage      # Mago
-    beq $t0, 3, set_archer    # Arqueiro
+    beq $t1, 1, guerreiro   # Guerreiro
+    beq $t1, 2, mago      # Mago
+    beq $t1, 3, arqueiro    # Arqueiro
     j main  # Caso inválido, pede novamente
 
-set_warrior:
-    li $t1, 120  # Vida
-    li $t2, 25   # Dano
-    j set_class
+guerreiro:
+    li $t2, 120  # Vida
+    li $t3, 25   # Dano
+    j definir_classe
 
-set_mage:
-    li $t1, 80   # Vida
-    li $t2, 35   # Dano
-    j set_class
+mago:
+    li $t2, 80   # Vida
+    li $t3, 35   # Dano
+    j definir_classe
 
-set_archer:
-    li $t1, 100  # Vida
-    li $t2, 30   # Dano
-    j set_class
+arqueiro:
+    li $t2, 100  # Vida
+    li $t3, 30   # Dano
+    j definir_classe
 
-set_class:
-    sw $t1, player_hp       # Define a vida do jogador
-    sw $t2, player_damage   # Define o dano do jogador
-    j battle_loop
+definir_classe:
+    sw $t2, hp_jogador       # Define a vida do jogador
+    sw $t3, dano_jogador   # Define o dano do jogador
+    j definir_dificuldade
+    
+definir_dificuldade:
+    # Escolha da dificuldade
+    li $v0, 4
+    la $a0, dificuldade_menu
+    syscall
 
-battle_loop:
-    # Exibe o menu para o jogador
+    li $v0, 5
+    syscall
+    move $t0, $v0  # armazena a opção escolhida
+
+    beq $t0, 1, modo_facil   # fácil
+    beq $t0, 2, modo_normal # normal
+    beq $t0, 3, modo_dificil   # difícil
+    j definir_dificuldade     # se inválido, repete a escolha
+
+modo_normal:
+
+    lw $t0, esquiva_disponivel
+    addi $t0, $t0, 1
+    sw $t0, esquiva_disponivel
+    j loop_batalha
+
+modo_facil: # mantém o número de esquivas
+    lw $t1, hp_inimigo
+    lw $t2, dano_inimigo
+    subi $t1, $t1, 20  # reduz vida do inimigo
+    subi $t2, $t2, 5  # reduz dano do inimigo
+    sw $t1, hp_inimigo
+    sw $t2, dano_inimigo
+    j loop_batalha
+
+modo_dificil:
+    lw $t1, hp_inimigo
+    lw $t2, dano_inimigo
+    lw $t3, esquiva_disponivel
+    addi $t1, $t1, 35  # aumenta vida do inimigo
+    addi $t2, $t2, 10  # aumenta dano do inimigo
+    addi $t3, $t3, 2
+    sw $t1, hp_inimigo
+    sw $t2, dano_inimigo
+    sw $t3, esquiva_disponivel
+    j loop_batalha
+
+loop_batalha:
+    # exibe o menu para o jogador
     li $v0, 4
     la $a0, menu
     syscall
 
-    # Lê a escolha do jogador
+    # lê a escolha do jogador
     li $v0, 5
     syscall
-    move $t0, $v0  # Armazena a opção escolhida
+    move $t0, $v0  # armazena a opção escolhida
 
-    # Verifica a ação escolhida
-    beq $t0, 1, player_attack  # Atacar
-    beq $t0, 2, use_potion     # Usar poção
-    beq $t0, 3, flee           # Fugir
-    j invalid_option           # Caso inválido
+    # verifica a ação escolhida
+    beq $t0, 1, jogador_ataca  # atacar
+    beq $t0, 2, usa_pocao     # usar poção
+    beq $t0, 3, esquiva
+    beq $t0, 4, fuga           # fugir
+    j opcao_invalida          # caso inválido
 
-player_attack:
-    # O jogador ataca o inimigo
-    lw $t1, enemy_hp           # Carrega a vida do inimigo
-    lw $t2, player_damage      # Carrega o dano do jogador
-    sub $t1, $t1, $t2          # Reduz a vida do inimigo
-    sw $t1, enemy_hp           # Atualiza a vida do inimigo
+jogador_ataca:
+    # o jogador ataca o inimigo
+    lw $t1, hp_inimigo           # carrega a vida do inimigo
+    lw $t2, dano_jogador      # carrega o dano do jogador
+    sub $t1, $t1, $t2          # reduz a vida do inimigo
+    sw $t1, hp_inimigo           # atualiza a vida do inimigo
 
-    # Exibe mensagem de ataque
+    # exibe mensagem de ataque
     li $v0, 4
-    la $a0, msgAttack
+    la $a0, msg_atacou
     syscall
     
-    #Exibe a vida do inimigo na tela
+    # exibe a vida do inimigo na tela
     li $v0, 4
-    la $a0, msgEnemyHP
+    la $a0, msg_HP_restante
     syscall
     li $v0, 1 
-    lw $a0, enemy_hp   
+    lw $a0, hp_inimigo   
     syscall
     li $v0, 4
-    la $a0, newline
+    la $a0, nova_linha
     syscall
 
-    # Verifica se o inimigo foi derrotado
-    blez $t1, player_win
-    jal enemy_turn
-    j battle_loop
+    # verifica se o inimigo foi derrotado
+    blez $t1, vitoria
+    jal inimigo_ataca
+    j loop_batalha
 
-use_potion:
-    # O jogador usa uma poção
-    lw $t3, player_potions     # Carrega o número de poções
-    blez $t3, battle_loop      # Se não houver poções, volta ao menu
+usa_pocao:
+    # o jogador usa uma poção
+    lw $t3, pocoes_disponiveis     # carrega o número de poções
+    blez $t3, loop_batalha      # se não houver poções, volta ao menu
 
-    addi $t3, $t3, -1          # Reduz o número de poções
-    sw $t3, player_potions
-    lw $t4, player_hp          # Carrega a vida do jogador
-    addi $t4, $t4, 20          # Restaura 20 pontos de vida
-    sw $t4, player_hp
+    addi $t3, $t3, -1          # reduz o número de poções
+    sw $t3, pocoes_disponiveis
+    lw $t4, hp_jogador          # carrega a vida do jogador
+    addi $t4, $t4, 20          # restaura 20 pontos de vida
+    sw $t4, hp_jogador
 
-    # Exibe mensagem de uso da poção
+    # exibe mensagem de uso da poção
     li $v0, 4
-    la $a0, msgPotion
+    la $a0, msg_pocao
     syscall
     
-    #Exibe a vida do jogador na tela
+    # exibe a vida do jogador na tela
     li $v0, 4
-    la $a0, msgPlayerHP
+    la $a0, msg_HP_atual
     syscall
     li $v0, 1 
-    lw $a0, player_hp   
+    lw $a0, hp_jogador   
     syscall
     li $v0, 4
-    la $a0, newline
+    la $a0, nova_linha
     syscall
 
-    # Turno do inimigo
-    jal enemy_turn
-    j battle_loop
+    # turno do inimigo
+    jal inimigo_ataca
+    j loop_batalha
+    
+esquiva:
+	lw $t1, esquiva_disponivel
+	# verifica se o jogador ainda tem esquivas disponíveis
+	blez $t1, msgEsquiva
+	addi $t1, $t1, -1 # reduz em 1 o numero de esquivas disponiveis
+	sw $t1, esquiva_disponivel
+	lw $t1, hp_inimigo           
+    	lw $t2, dano_jogador     
+   	sub $t1, $t1, $t2         
+    	sw $t1, hp_inimigo
+    	
+    	# mostrando o hp do inimigo após o ataque
+    	li $v0, 4
+    	la $a0, msg_HP_restante
+    	syscall
+    	li $v0, 1 
+    	lw $a0, hp_inimigo   
+    	syscall
+    	li $v0, 4
+    	la $a0, nova_linha
+    	syscall
+    	blez $t1, vitoria
+    	
+    	j loop_batalha      
+	
+msgEsquiva:
+	# exibindo a mensagem de que o jogador não tem mais esquivas disponiveis
+	li $v0, 4
+	la $a0, msg_esquiva
+	syscall
+	j loop_batalha
 
-flee:
-    # O jogador foge da batalha
+fuga:
+    # o jogador foge da batalha
     li $v0, 4
-    la $a0, msgFlee
+    la $a0, msg_fuga
     syscall
     j game_over
 
-enemy_turn:
-    # O inimigo ataca o jogador
-    lw $t5, player_hp          # Carrega a vida do jogador
-    lw $t6, enemy_attack       # Carrega o dano do inimigo
-    sub $t5, $t5, $t6          # Reduz a vida do jogador
-    sw $t5, player_hp
+inimigo_ataca:
+    # o inimigo ataca o jogador
+    lw $t5, hp_jogador          # carrega a vida do jogador
+    lw $t6, dano_inimigo       # carrega o dano do inimigo
+    sub $t5, $t5, $t6          # reduz a vida do jogador
+    sw $t5, hp_jogador
 
-    # Exibe mensagem de ataque do inimigo
+    # exibe mensagem de ataque do inimigo
     li $v0, 4
-    la $a0, msgEnemyAttack
+    la $a0, msg_atacado
     syscall
     
-    #Exibe a vida do jogador na tela
+    # exibe a vida do jogador na tela
     li $v0, 4
-    la $a0, msgPlayerHP
+    la $a0, msg_HP_atual
     syscall
     li $v0, 1 
-    lw $a0, player_hp   
+    lw $a0, hp_jogador   
     syscall
     li $v0, 4
-    la $a0, newline
+    la $a0, nova_linha
     syscall
 
-    # Verifica se o jogador foi derrotado
-    blez $t5, player_lose
+    # verifica se o jogador foi derrotado
+    blez $t5, derrota
     jr $ra
 
-player_win:
-    # Mensagem de vitória
+vitoria:
+    # mensagem de vitória
     li $v0, 4
-    la $a0, msgWin
+    la $a0, msg_vitoria
     syscall
     j game_over
 
-player_lose:
-    # Mensagem de derrota
+derrota:
+    # mensagem de derrota
     li $v0, 4
-    la $a0, msgLose
+    la $a0, msg_derrotado
     syscall
     j game_over
 
-invalid_option:
-    # Mensagem de opção inválida
+opcao_invalida:
+    # mensagem de opção inválida
     li $v0, 4
-    la $a0, msgInvalid
+    la $a0, msg_invalido
     syscall
-    j battle_loop
+    j loop_batalha
 
 game_over:
-    # Finaliza o programa
+    # finaliza o programa
     li $v0, 10
     syscall
